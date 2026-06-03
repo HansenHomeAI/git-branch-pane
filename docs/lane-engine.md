@@ -9,3 +9,5 @@ For each commit row, the server tracks active lanes, removes the current commit 
 - pass-through segments for other active branch lanes
 
 That keeps the browser renderer simple and makes the line math testable without a browser.
+
+The visual renderer intentionally keeps labels sparse. Branch heads are always labeled, ordinary commits use short subjects, and full metadata lives on hover.
