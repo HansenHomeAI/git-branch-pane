@@ -84,6 +84,24 @@ class GitBranchPaneTests(unittest.TestCase):
                 self.assertGreaterEqual(edge["from"], 0)
                 self.assertGreaterEqual(edge["to"], 0)
 
+    def test_layout_can_emit_all_palette_colors(self):
+        rows = [
+            {
+                "kind": "commit",
+                "hash": f"{index:040x}",
+                "short": f"{index:07x}",
+                "parents": [],
+                "decorations": [],
+                "subject": f"independent {index}",
+                "isMerge": False,
+            }
+            for index in range(len(git_branch_pane.GRAPH_COLORS))
+        ]
+
+        commits = git_branch_pane.layout_rows(rows)
+        self.assertEqual(len(git_branch_pane.GRAPH_COLORS), 12)
+        self.assertEqual(set(row["color"] for row in commits), set(range(12)))
+
     def test_branch_listing_marks_current(self):
         data = git_branch_pane.branches(str(self.repo))
         names = {row["name"]: row for row in data["branches"]}

@@ -23,17 +23,20 @@ from pathlib import Path
 
 FIELD_SEP = "\x1f"
 GRAPH_COLORS = [
-    "#149ce6",
-    "#25d933",
-    "#ff3333",
-    "#b425e8",
-    "#f49b0b",
-    "#d624b8",
-    "#90d617",
-    "#00c2b2",
-    "#f6d13a",
-    "#ff7a59",
+    "#26487A",
+    "#406291",
+    "#6081B3",
+    "#8897B8",
+    "#8787AE",
+    "#9E8DAA",
+    "#A98B99",
+    "#CC9385",
+    "#ECA377",
+    "#F3B674",
+    "#EDDCC4",
+    "#F1EDE0",
 ]
+COLOR_SEQUENCE = [0, 7, 3, 9, 1, 6, 10, 4, 8, 2, 5, 11]
 
 
 def run_git(repo: str, args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -127,10 +130,16 @@ def layout_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     color_by_hash: dict[str, int] = {}
     laid_out: list[dict[str, object]] = []
     max_lane = 0
+    next_color = 0
 
     def color_for(commit_hash: str, preferred: int | None = None) -> int:
+        nonlocal next_color
         if commit_hash not in color_by_hash:
-            color_by_hash[commit_hash] = preferred if preferred is not None else len(color_by_hash) % len(GRAPH_COLORS)
+            if preferred is not None:
+                color_by_hash[commit_hash] = preferred
+            else:
+                color_by_hash[commit_hash] = COLOR_SEQUENCE[next_color % len(COLOR_SEQUENCE)]
+                next_color += 1
         return color_by_hash[commit_hash]
 
     for index, row in enumerate(rows):
