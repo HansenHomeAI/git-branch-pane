@@ -54,7 +54,9 @@ class GitBranchPaneTests(unittest.TestCase):
         self.assertGreaterEqual(merge["maxLane"], 1)
         for row in commits:
             self.assertIsInstance(row["lane"], int)
+            self.assertIsInstance(row["rowMaxLane"], int)
             self.assertLessEqual(row["lane"], row["maxLane"])
+            self.assertLessEqual(row["rowMaxLane"], row["maxLane"])
             for edge in [*row["outgoing"], *row["passthrough"]]:
                 self.assertGreaterEqual(edge["to"], 0)
                 self.assertLessEqual(edge["to"], row["maxLane"])
@@ -74,6 +76,7 @@ class GitBranchPaneTests(unittest.TestCase):
         commits = [row for row in data["rows"] if row["kind"] == "commit"]
         merges = [row for row in commits if row["isMerge"]]
         self.assertGreaterEqual(len(merges), 2)
+        self.assertTrue(any(row["rowMaxLane"] < row["maxLane"] for row in commits))
         for row in commits:
             for edge in row["outgoing"]:
                 self.assertTrue(any(parent_row["hash"] == edge["parent"] for parent_row in commits[row["index"] + 1 :]))

@@ -184,12 +184,19 @@ def layout_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
             )
 
         active = after
-        lane_values = [lane, len(active) - 1, *[int(edge["to"]) for edge in outgoing], *[int(edge["to"]) for edge in passthrough]]
-        max_lane = max(max_lane, *lane_values)
+        row_lane_values = [
+            lane,
+            *[int(edge["to"]) for edge in outgoing],
+            *[int(edge["from"]) for edge in passthrough],
+            *[int(edge["to"]) for edge in passthrough],
+        ]
+        row_max_lane = max(row_lane_values)
+        max_lane = max(max_lane, row_max_lane)
         row.update(
             {
                 "index": index,
                 "lane": lane,
+                "rowMaxLane": row_max_lane,
                 "color": commit_color,
                 "incoming": not introduced,
                 "outgoing": outgoing,
@@ -554,6 +561,18 @@ HTML = r"""<!doctype html>
       return `M ${x1} ${y1} L ${x1} ${midY - radius} Q ${x1} ${midY} ${x1 + direction * radius} ${midY} L ${x2 - direction * radius} ${midY} Q ${x2} ${midY} ${x2} ${midY + radius} L ${x2} ${y2}`;
     }
 
+    function rowMaxLane(row) {
+      if (Number.isFinite(row.rowMaxLane)) return row.rowMaxLane;
+      const lanes = [row.lane || 0];
+      (row.outgoing || []).forEach((edge) => lanes.push(edge.to || 0));
+      (row.passthrough || []).forEach((edge) => lanes.push(edge.from || 0, edge.to || 0));
+      return Math.max(0, ...lanes);
+    }
+
+    function labelLeftFor(row) {
+      return leftPad + (rowMaxLane(row) + 1) * laneGap + 14;
+    }
+
     function renderGraph() {
       const commits = state.rows.filter((row) => row.kind === 'commit');
       if (!commits.length) {
@@ -564,7 +583,6 @@ HTML = r"""<!doctype html>
       const maxLane = Math.max(0, ...layout.map((row) => row.maxLane));
       const graphWidth = leftPad + (maxLane + 1) * laneGap + 204;
       const height = topPad * 2 + layout.length * rowH;
-      const labelLeft = leftPad + (maxLane + 1) * laneGap + 14;
       const paths = [];
 
       layout.forEach((row) => {
@@ -599,7 +617,7 @@ HTML = r"""<!doctype html>
         const title = `${row.subject}\n${row.short}\n${row.author} - ${row.relativeDate}\n${names.join(', ')}`;
         return `<div class="commit ${isHead ? 'head-row' : ''}${selected}" data-sha="${html(row.hash)}" style="top:${y - rowH / 2}px">
           <span class="dot ${row.isMerge ? 'merge' : ''}" style="left:${x}px;top:${rowH / 2}px;background:${color}"></span>
-          <span class="label" style="left:${labelLeft}px;right:8px" title="${html(title)}">${text}</span>
+          <span class="label" style="left:${labelLeftFor(row)}px;right:8px" title="${html(title)}">${text}</span>
         </div>`;
       }).join('');
 
