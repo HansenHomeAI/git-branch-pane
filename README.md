@@ -8,6 +8,34 @@ It is built for the practical Codex workflow: start it in the integrated termina
 
 Codex does not currently document a native API for adding custom permanent sidebar panes. The closest working route is a narrow local web app in the Codex in-app browser. This gives you the core branch graph workflow without waiting on a Codex UI extension surface.
 
+## One Paste Command
+
+From any Git project on any machine:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | sh
+```
+
+That command installs or updates the machine-level `gbp` tool, then starts a local server for the Git repo under your current directory. It does not copy anything into that project and does not modify that project's Git data.
+
+After it is installed once, run this from any Git project:
+
+```sh
+gbp
+```
+
+Or point it at a specific repo:
+
+```sh
+gbp /path/to/any/repo
+```
+
+The paste command can also target a specific repo:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | sh -s -- /path/to/any/repo
+```
+
 ## Run
 
 After installing, run this from any Git project:
@@ -28,6 +56,12 @@ From this checkout:
 
 The installer copies the pane to `~/.local/share/git-branch-pane/` and writes the `gbp` command to `~/.local/bin/`.
 
+From the public repo, install without immediately launching:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | GBP_NO_RUN=1 sh
+```
+
 ```sh
 python3 git_branch_pane.py /path/to/repo --port 8765
 ```
@@ -46,22 +80,52 @@ python3 git_branch_pane.py . --port 8765
 
 ## Use On SSH Machines
 
-On the remote machine:
-
-```sh
-python3 git_branch_pane.py /path/to/repo --host 127.0.0.1 --port 8765
-```
-
-On your Mac:
+On your Mac, open the SSH tunnel:
 
 ```sh
 ssh -L 8765:127.0.0.1:8765 user@remote-host
 ```
 
-Then open:
+On the remote machine, from the repo you want to view:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | sh
+```
+
+Or, after it is already installed:
+
+```sh
+gbp --host 127.0.0.1 --port 8765
+```
+
+Then open locally:
 
 ```text
-http://127.0.0.1:8765/?repo=/path/to/repo
+http://127.0.0.1:8765
+```
+
+If the server reports a different port because `8765` is busy, tunnel that port instead.
+
+## Deployment Model
+
+Git Branch Pane is a machine-level tool, not a per-project dependency.
+
+The public repo is cloned into:
+
+```text
+~/.local/share/git-branch-pane/source
+```
+
+The runnable app is copied into:
+
+```text
+~/.local/share/git-branch-pane/git_branch_pane.py
+```
+
+The global command is written to:
+
+```text
+~/.local/bin/gbp
 ```
 
 ## Features
