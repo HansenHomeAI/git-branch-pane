@@ -483,7 +483,20 @@ HTML = r"""<!doctype html>
       branches: [],
       selected: null,
     };
-    const colors = ['#149ce6','#25d933','#ff3333','#a927e8','#f49b0b','#d624b8','#90d617','#00c2b2','#f6d13a','#ff7a59'];
+    const colors = [
+      '#26487A',
+      '#406291',
+      '#6081B3',
+      '#8897B8',
+      '#8787AE',
+      '#9E8DAA',
+      '#A98B99',
+      '#CC9385',
+      '#ECA377',
+      '#F3B674',
+      '#EDDCC4',
+      '#F1EDE0'
+    ];
     const rowH = 28;
     const topPad = 18;
     const laneGap = 28;
@@ -507,6 +520,14 @@ HTML = r"""<!doctype html>
 
     function graphColor(index) {
       return colors[Math.abs(Number(index) || 0) % colors.length];
+    }
+
+    function colorText(hex) {
+      const raw = hex.replace('#', '');
+      const r = parseInt(raw.slice(0, 2), 16);
+      const g = parseInt(raw.slice(2, 4), 16);
+      const b = parseInt(raw.slice(4, 6), 16);
+      return (r * .299 + g * .587 + b * .114) > 150 ? '#111417' : '#F1EDE0';
     }
 
     function branchNamesFor(row) {
@@ -562,7 +583,7 @@ HTML = r"""<!doctype html>
         const isHead = names.length > 0;
         const selected = state.selected === row.hash ? ' selected' : '';
         const color = graphColor(row.color);
-        const refs = names.slice(0, 2).map((name) => `<span class="ref" style="background:${color}">${html(name)}</span>`).join('');
+        const refs = names.slice(0, 2).map((name) => `<span class="ref" style="background:${color};color:${colorText(color)}">${html(name)}</span>`).join('');
         const text = isHead ? refs : html(row.subject);
         const title = `${row.subject}\n${row.short}\n${row.author} - ${row.relativeDate}\n${names.join(', ')}`;
         return `<div class="commit ${isHead ? 'head-row' : ''}${selected}" data-sha="${html(row.hash)}" style="top:${y - rowH / 2}px">
