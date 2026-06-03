@@ -433,25 +433,33 @@ HTML = r"""<!doctype html>
     .tip {
       position: fixed;
       z-index: 10;
-      max-width: 360px;
+      max-width: min(390px, calc(100vw - 28px));
       display: none;
-      border: 1px solid #3b434c;
-      border-radius: 7px;
-      padding: 8px 9px;
-      background: #191c20;
-      box-shadow: 0 16px 44px rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 22px;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, rgba(46,49,55,.72), rgba(21,23,27,.58));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.22),
+        inset 0 -1px 0 rgba(255,255,255,.06),
+        0 22px 60px rgba(0,0,0,.42);
+      -webkit-backdrop-filter: blur(26px) saturate(180%);
+      backdrop-filter: blur(26px) saturate(180%);
       pointer-events: none;
     }
     .tip-title {
-      margin-bottom: 5px;
-      color: #f3f6f9;
-      font-size: 14px;
-      font-weight: 800;
-      line-height: 1.3;
+      margin-bottom: 10px;
+      color: #ffffff;
+      font-family: var(--sans);
+      font-size: 16px;
+      font-weight: 750;
+      line-height: 1.25;
     }
     .tip-meta {
-      color: var(--muted);
-      font: 12px/1.45 var(--mono);
+      color: rgba(241,237,224,.82);
+      font: 13px/1.5 var(--sans);
+      font-weight: 560;
+      overflow-wrap: anywhere;
     }
     .rest {
       flex: 1;
