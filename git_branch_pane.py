@@ -274,6 +274,20 @@ def checkout_branch(repo: str, branch: str) -> dict[str, object]:
     }
 
 
+def copy_to_clipboard(text: str) -> dict[str, object]:
+    commands = [["pbcopy"], ["wl-copy"], ["xclip", "-selection", "clipboard"]]
+    errors = []
+    for command in commands:
+        try:
+            result = subprocess.run(command, input=text, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        except FileNotFoundError:
+            continue
+        if result.returncode == 0:
+            return {"ok": True, "method": command[0]}
+        errors.append(result.stderr.strip() or f"{command[0]} exited {result.returncode}")
+    return {"ok": False, "error": "; ".join(errors) or "No clipboard command found"}
+
+
 def make_server(host: str, port: int, handler: type[BaseHTTPRequestHandler]) -> ThreadingHTTPServer:
     ports = [port] if port == 0 else [port, *range(port + 1, port + 21)]
     last_error: OSError | None = None
@@ -565,7 +579,7 @@ HTML = r"""<!doctype html>
         node.addEventListener('mouseenter', showTip);
         node.addEventListener('mousemove', moveTip);
         node.addEventListener('mouseleave', hideTip);
-        node.addEventListener('click', () => selectCommit(node.dataset.sha));
+        node.addEventListener('click', (event) => selectCommit(node.dataset.sha, event));
       });
     }
 
@@ -573,17 +587,74 @@ HTML = r"""<!doctype html>
       return state.rows.find((row) => row.hash === sha);
     }
 
-    async function selectCommit(sha) {
+    function detailLines(row) {
+      const refs = branchNamesFor(row);
+      const lines = [
+        row.subject,
+        `hash: ${row.hash}`,
+        `author: ${row.author}`,
+        `date: ${row.relativeDate}`,
+      ];
+      if (refs.length) lines.push(`branches: ${refs.join(', ')}`);
+      if (row.isMerge) lines.push('merge: yes');
+      if ((row.parents || []).length) lines.push(`parents: ${row.parents.map((parent) => parent.slice(0, 8)).join(', ')}`);
+      return lines;
+    }
+
+    function detailHtml(row) {
+      const lines = detailLines(row);
+      return `<div class="tip-title">${html(lines[0])}</div>
+        <div class="tip-meta">${lines.slice(1).map(html).join('<br>')}</div>`;
+    }
+
+    async function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (err) {
+        }
+      }
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.style.position = 'fixed';
+      area.style.left = '-9999px';
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand('copy');
+      area.remove();
+      if (ok) return true;
+      const response = await fetch('/api/copy', {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({ text })
+      });
+      const data = await response.json();
+      if (!data.ok) throw new Error(data.error || 'copy failed');
+      return true;
+    }
+
+    async function selectCommit(sha, event) {
       state.selected = sha;
       renderGraph();
+      const row = rowForSha(sha);
+      if (!row || !branchNamesFor(row).length) return;
+      try {
+        await copyText(detailLines(row).join('\n'));
+        $('tip').innerHTML = `${detailHtml(row)}<div class="tip-meta"><br>copied</div>`;
+        $('tip').style.display = 'block';
+        if (event) moveTip(event);
+      } catch (err) {
+        $('tip').innerHTML = `${detailHtml(row)}<div class="tip-meta"><br>copy failed</div>`;
+        $('tip').style.display = 'block';
+        if (event) moveTip(event);
+      }
     }
 
     function showTip(event) {
       const row = rowForSha(event.currentTarget.dataset.sha);
       if (!row) return;
-      const refs = branchNamesFor(row);
-      $('tip').innerHTML = `<div class="tip-title">${html(row.subject)}</div>
-        <div class="tip-meta">${html(row.short)}${row.isMerge ? '  merge' : ''}<br>${html(row.author)} - ${html(row.relativeDate)}<br>${html(refs.join(', ') || 'commit')}</div>`;
+      $('tip').innerHTML = detailHtml(row);
       $('tip').style.display = 'block';
       moveTip(event);
     }
@@ -657,7 +728,13 @@ class PaneHandler(BaseHTTPRequestHandler):
         self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:
-        if urllib.parse.urlparse(self.path).path != "/api/checkout":
+        path = urllib.parse.urlparse(self.path).path
+        if path == "/api/copy":
+            length = int(self.headers.get("content-length", "0"))
+            body = json.loads(self.rfile.read(length) or b"{}")
+            self.send_json(copy_to_clipboard(str(body.get("text", ""))))
+            return
+        if path != "/api/checkout":
             self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
             return
         length = int(self.headers.get("content-length", "0"))
