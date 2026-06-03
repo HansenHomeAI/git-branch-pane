@@ -497,7 +497,7 @@ HTML = r"""<!doctype html>
       '#EDDCC4',
       '#F1EDE0'
     ];
-    const rowH = 28;
+    const rowH = 32;
     const topPad = 18;
     const laneGap = 28;
     const leftPad = 28;
@@ -539,8 +539,10 @@ HTML = r"""<!doctype html>
     function linePath(x1, y1, x2, y2) {
       if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
       const dy = y2 - y1;
-      const roundY = y1 + dy * .5;
-      return `M ${x1} ${y1} C ${x1} ${roundY}, ${x2} ${roundY}, ${x2} ${y2}`;
+      const direction = Math.sign(x2 - x1);
+      const radius = Math.max(4, Math.min(12, Math.abs(x2 - x1) / 2, Math.abs(dy) / 2));
+      const midY = y1 + dy / 2;
+      return `M ${x1} ${y1} L ${x1} ${midY - radius} Q ${x1} ${midY} ${x1 + direction * radius} ${midY} L ${x2 - direction * radius} ${midY} Q ${x2} ${midY} ${x2} ${midY + radius} L ${x2} ${y2}`;
     }
 
     function renderGraph() {
