@@ -433,34 +433,33 @@ HTML = r"""<!doctype html>
     .tip {
       position: fixed;
       z-index: 10;
-      max-width: min(390px, calc(100vw - 28px));
+      max-width: min(380px, calc(100vw - 28px));
       display: none;
-      border: 1px solid rgba(255,255,255,.2);
-      border-radius: 22px;
-      padding: 16px 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 18px;
+      padding: 17px 19px;
       background:
-        linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.035)),
-        rgba(17,17,17,.22);
+        linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.028)),
+        rgba(31,31,31,.72);
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.22),
-        inset 0 -1px 0 rgba(255,255,255,.05),
-        0 24px 70px rgba(0,0,0,.46);
-      -webkit-backdrop-filter: blur(30px);
-      backdrop-filter: blur(30px);
+        inset 0 1px 0 rgba(255,255,255,.09),
+        0 18px 46px rgba(0,0,0,.38);
+      -webkit-backdrop-filter: blur(22px);
+      backdrop-filter: blur(22px);
       pointer-events: none;
     }
     .tip-title {
-      margin-bottom: 10px;
-      color: #ffffff;
+      margin-bottom: 12px;
+      color: #f4f4f4;
       font-family: var(--sans);
-      font-size: 16px;
-      font-weight: 750;
-      line-height: 1.25;
+      font-size: 15px;
+      font-weight: 650;
+      line-height: 1.28;
     }
     .tip-meta {
-      color: rgba(241,237,224,.82);
-      font: 13px/1.5 var(--sans);
-      font-weight: 560;
+      color: rgba(232,232,232,.74);
+      font: 14px/1.42 var(--sans);
+      font-weight: 450;
       overflow-wrap: anywhere;
     }
     .rest {
