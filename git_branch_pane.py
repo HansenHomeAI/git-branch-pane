@@ -8,12 +8,14 @@ Run:
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 import subprocess
 import sys
 import textwrap
 import urllib.parse
+import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -270,6 +272,22 @@ def checkout_branch(repo: str, branch: str) -> dict[str, object]:
         "stderr": result.stderr,
         "status": status_summary(repo) if result.returncode == 0 else None,
     }
+
+
+def make_server(host: str, port: int, handler: type[BaseHTTPRequestHandler]) -> ThreadingHTTPServer:
+    ports = [port] if port == 0 else [port, *range(port + 1, port + 21)]
+    last_error: OSError | None = None
+    for candidate in ports:
+        try:
+            return ThreadingHTTPServer((host, candidate), handler)
+        except OSError as exc:
+            last_error = exc
+            if port != 0 and getattr(exc, "errno", None) in {errno.EADDRINUSE, 48, 98}:
+                continue
+            raise
+    if last_error:
+        raise last_error
+    raise OSError("No usable port found")
 
 
 HTML = r"""<!doctype html>
@@ -813,7 +831,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("repo", nargs="?", default=".", help="Repository path to show")
     parser.add_argument("--host", default="127.0.0.1", help="Bind host. Keep 127.0.0.1 unless you know you want LAN access.")
-    parser.add_argument("--port", type=int, default=8765, help="Bind port")
+    parser.add_argument("--port", type=int, default=8765, help="Bind port. If busy, the next available port is used.")
+    parser.add_argument("--open", action="store_true", help="Open the pane URL in the default browser")
     parser.add_argument("--quiet", action="store_true", help="Suppress access logs")
     return parser
 
@@ -824,11 +843,15 @@ def main(argv: list[str] | None = None) -> int:
     if not ok:
         print(root_or_error, file=sys.stderr)
         return 2
-    server = ThreadingHTTPServer((args.host, args.port), PaneHandler)
+    server = make_server(args.host, args.port, PaneHandler)
     server.default_repo = root_or_error  # type: ignore[attr-defined]
     server.quiet = args.quiet  # type: ignore[attr-defined]
-    url = f"http://{args.host}:{args.port}/?repo={urllib.parse.quote(root_or_error)}"
+    actual_host, actual_port = server.server_address[:2]
+    url_host = "127.0.0.1" if actual_host in {"0.0.0.0", ""} else actual_host
+    url = f"http://{url_host}:{actual_port}/?repo={urllib.parse.quote(root_or_error)}"
     print(f"Git Branch Pane: {url}")
+    if args.open:
+        webbrowser.open(url)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -2,7 +2,14 @@
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-PORT=${GBP_PORT:-8765}
-REPO=${1:-.}
 
-exec python3 "$SCRIPT_DIR/git_branch_pane.py" "$REPO" --port "$PORT"
+if [ "$#" -eq 0 ]; then
+  set -- .
+fi
+
+EXTRA_OPEN=
+if [ "${GBP_OPEN:-1}" != "0" ] && [ -z "${SSH_CONNECTION:-}" ]; then
+  EXTRA_OPEN=--open
+fi
+
+exec python3 "$SCRIPT_DIR/git_branch_pane.py" "$@" $EXTRA_OPEN

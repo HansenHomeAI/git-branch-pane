@@ -1,0 +1,35 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+APP_DIR="${GBP_APP_DIR:-$HOME/.local/share/git-branch-pane}"
+BIN_DIR="${GBP_BIN_DIR:-$HOME/.local/bin}"
+
+mkdir -p "$APP_DIR" "$BIN_DIR"
+cp "$ROOT/git_branch_pane.py" "$APP_DIR/git_branch_pane.py"
+chmod 755 "$APP_DIR/git_branch_pane.py"
+
+cat > "$BIN_DIR/gbp" <<EOF
+#!/usr/bin/env sh
+set -eu
+
+if [ "\$#" -eq 0 ]; then
+  set -- .
+fi
+
+EXTRA_OPEN=
+if [ "\${GBP_OPEN:-1}" != "0" ] && [ -z "\${SSH_CONNECTION:-}" ]; then
+  EXTRA_OPEN=--open
+fi
+
+exec python3 "$APP_DIR/git_branch_pane.py" "\$@" \$EXTRA_OPEN
+EOF
+chmod 755 "$BIN_DIR/gbp"
+
+case ":$PATH:" in
+  *":$BIN_DIR:"*) ;;
+  *) echo "Installed gbp to $BIN_DIR, but that directory is not on PATH." ;;
+esac
+
+echo "Installed: $BIN_DIR/gbp"
+echo "Run from any Git repo: gbp"
