@@ -23,20 +23,20 @@ from pathlib import Path
 
 FIELD_SEP = "\x1f"
 GRAPH_COLORS = [
-    "#4EA1FF",
-    "#1F6FFF",
-    "#35D7FF",
-    "#00A7D8",
-    "#35E06F",
-    "#00A85A",
-    "#FFD84D",
-    "#F5A800",
-    "#FF5C5C",
-    "#E33434",
-    "#B78CFF",
-    "#7B4DFF",
+    "#4D8DFF",
+    "#6EA8FF",
+    "#4CC7E8",
+    "#2DA6C2",
+    "#4FC97A",
+    "#36A96B",
+    "#7775E6",
+    "#9B94F2",
+    "#A98BEA",
+    "#8D75D8",
+    "#CFA64A",
+    "#D96F63",
 ]
-COLOR_SEQUENCE = [0, 2, 4, 6, 8, 10, 1, 3, 5, 7, 9, 11]
+COLOR_SEQUENCE = [0, 2, 6, 1, 3, 7, 4, 5, 8, 9, 10, 11]
 
 
 def run_git(repo: str, args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -509,18 +509,18 @@ HTML = r"""<!doctype html>
       hoverCommit: null,
     };
     const colors = [
-      '#4EA1FF',
-      '#1F6FFF',
-      '#35D7FF',
-      '#00A7D8',
-      '#35E06F',
-      '#00A85A',
-      '#FFD84D',
-      '#F5A800',
-      '#FF5C5C',
-      '#E33434',
-      '#B78CFF',
-      '#7B4DFF'
+      '#4D8DFF',
+      '#6EA8FF',
+      '#4CC7E8',
+      '#2DA6C2',
+      '#4FC97A',
+      '#36A96B',
+      '#7775E6',
+      '#9B94F2',
+      '#A98BEA',
+      '#8D75D8',
+      '#CFA64A',
+      '#D96F63'
     ];
     const rowH = 38;
     const topPad = 18;
