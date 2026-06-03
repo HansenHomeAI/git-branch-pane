@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+*-proof.jpg
+.DS_Store
