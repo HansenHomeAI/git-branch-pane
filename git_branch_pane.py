@@ -334,28 +334,6 @@ HTML = r"""<!doctype html>
       flex-direction: column;
       overflow: hidden;
     }
-    .top {
-      min-height: 34px;
-      display: flex;
-      align-items: center;
-      padding: 6px 8px;
-      background: var(--rail);
-      border-bottom: 1px solid var(--line);
-    }
-    .repo-name {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 12px;
-      font-weight: 800;
-    }
-    .repo-meta {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: var(--muted);
-      font: 10px var(--sans);
-    }
     .graph-wrap {
       position: relative;
       flex: 1;
@@ -474,12 +452,6 @@ HTML = r"""<!doctype html>
 <body>
   <div class="stage">
     <main class="pane">
-      <div class="top">
-        <div>
-          <div id="repoName" class="repo-name">Git Branch Pane</div>
-          <div id="repoMeta" class="repo-meta">Loading...</div>
-        </div>
-      </div>
       <div id="graphWrap" class="graph-wrap">
         <div id="graphCanvas" class="graph-canvas">
           <svg id="graphSvg" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -602,10 +574,6 @@ HTML = r"""<!doctype html>
     async function selectCommit(sha) {
       state.selected = sha;
       renderGraph();
-      const row = rowForSha(sha);
-      if (row) {
-        $('repoMeta').textContent = `${row.short}  ${row.subject}`;
-      }
     }
 
     function showTip(event) {
@@ -642,13 +610,10 @@ HTML = r"""<!doctype html>
         if (!new URLSearchParams(location.search).get('repo')) {
           history.replaceState(null, '', `?repo=${encodeURIComponent(state.repo)}`);
         }
-        $('repoName').textContent = repo.name;
-        $('repoMeta').textContent = `${repo.status.branch}${repo.status.changes.length ? ' - changed' : ''}`;
         state.rows = graphData.rows || [];
         state.branches = branchData.branches || [];
         renderGraph();
       } catch (err) {
-        $('repoMeta').textContent = err.message;
         $('graphCanvas').innerHTML = `<div class="empty">${html(err.message)}</div><svg id="graphSvg" xmlns="http://www.w3.org/2000/svg"></svg>`;
       }
     }
