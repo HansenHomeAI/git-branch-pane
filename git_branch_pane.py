@@ -378,7 +378,7 @@ HTML = r"""<!doctype html>
       cursor: default;
     }
     .commit:hover { background: rgba(255,255,255,.055); }
-    .commit.selected { background: rgba(106,169,255,.15); }
+    .commit.selected { background: rgba(255,255,255,.07); }
     .dot {
       position: absolute;
       width: 10px;
@@ -435,16 +435,18 @@ HTML = r"""<!doctype html>
       z-index: 10;
       max-width: min(390px, calc(100vw - 28px));
       display: none;
-      border: 1px solid rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.2);
       border-radius: 22px;
       padding: 16px 18px;
-      background: linear-gradient(135deg, rgba(46,49,55,.72), rgba(21,23,27,.58));
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.035)),
+        rgba(17,17,17,.22);
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,.22),
-        inset 0 -1px 0 rgba(255,255,255,.06),
-        0 22px 60px rgba(0,0,0,.42);
-      -webkit-backdrop-filter: blur(26px) saturate(180%);
-      backdrop-filter: blur(26px) saturate(180%);
+        inset 0 -1px 0 rgba(255,255,255,.05),
+        0 24px 70px rgba(0,0,0,.46);
+      -webkit-backdrop-filter: blur(30px);
+      backdrop-filter: blur(30px);
       pointer-events: none;
     }
     .tip-title {
