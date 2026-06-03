@@ -442,15 +442,13 @@ HTML = r"""<!doctype html>
       z-index: 10;
       max-width: min(380px, calc(100vw - 28px));
       display: none;
-      border: 1px solid rgba(255,255,255,.12);
+      border: 0;
       border-radius: 18px;
       padding: 17px 19px;
       background:
         linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.028)),
         rgba(31,31,31,.72);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.09),
-        0 18px 46px rgba(0,0,0,.38);
+      box-shadow: 0 18px 46px rgba(0,0,0,.38);
       -webkit-backdrop-filter: blur(22px);
       backdrop-filter: blur(22px);
       pointer-events: none;
