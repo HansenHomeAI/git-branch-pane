@@ -518,9 +518,8 @@ HTML = r"""<!doctype html>
     function linePath(x1, y1, x2, y2) {
       if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
       const dy = y2 - y1;
-      const c1 = y1 + dy * .35;
-      const c2 = y1 + dy * .65;
-      return `M ${x1} ${y1} C ${x1} ${c1}, ${x2} ${c2}, ${x2} ${y2}`;
+      const roundY = y1 + dy * .5;
+      return `M ${x1} ${y1} C ${x1} ${roundY}, ${x2} ${roundY}, ${x2} ${y2}`;
     }
 
     function renderGraph() {
