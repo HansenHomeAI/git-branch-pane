@@ -321,7 +321,7 @@ HTML = r"""<!doctype html>
       --muted: #939aa3;
       --hot: #6aa9ff;
       --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
     }
     * { box-sizing: border-box; }
     body {
@@ -329,6 +329,9 @@ HTML = r"""<!doctype html>
       background: var(--bg);
       color: var(--text);
       font-family: var(--sans);
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
       overflow: hidden;
     }
     .stage {
@@ -368,7 +371,7 @@ HTML = r"""<!doctype html>
     .commit {
       position: absolute;
       left: 0;
-      height: 28px;
+      height: 38px;
       right: 0;
       display: flex;
       align-items: center;
@@ -396,16 +399,16 @@ HTML = r"""<!doctype html>
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: 11px;
-      line-height: 18px;
+      font-size: 14px;
+      line-height: 21px;
       color: #d8dde3;
     }
-    .commit:not(.head-row) .label { color: #8d949d; }
+    .commit:not(.head-row) .label { color: #a5abb4; font-weight: 500; }
     .head-row .label { color: #f2f5f8; font-weight: 700; }
     .refs {
       display: inline-flex;
       gap: 4px;
-      max-width: 190px;
+      max-width: 220px;
       vertical-align: top;
       margin-right: 5px;
     }
@@ -414,17 +417,17 @@ HTML = r"""<!doctype html>
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      border-radius: 5px;
-      padding: 1px 5px 2px;
+      border-radius: 7px;
+      padding: 2px 8px 3px;
       color: #071018;
       background: #9bd1ff;
-      font: 10px var(--mono);
-      font-weight: 800;
+      font: 13px var(--sans);
+      font-weight: 750;
     }
     .empty {
       padding: 18px;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 14px;
       line-height: 1.4;
     }
     .tip {
@@ -442,13 +445,13 @@ HTML = r"""<!doctype html>
     .tip-title {
       margin-bottom: 5px;
       color: #f3f6f9;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 800;
       line-height: 1.3;
     }
     .tip-meta {
       color: var(--muted);
-      font: 11px/1.45 var(--mono);
+      font: 12px/1.45 var(--mono);
     }
     .rest {
       flex: 1;
@@ -494,7 +497,7 @@ HTML = r"""<!doctype html>
       '#EDDCC4',
       '#F1EDE0'
     ];
-    const rowH = 32;
+    const rowH = 38;
     const topPad = 18;
     const laneGap = 28;
     const leftPad = 28;
