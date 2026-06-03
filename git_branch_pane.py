@@ -505,6 +505,9 @@ HTML = r"""<!doctype html>
       rows: [],
       branches: [],
       selected: null,
+      tipTimer: null,
+      hoverEvent: null,
+      hoverCommit: null,
     };
     const colors = [
       '#26487A',
@@ -632,9 +635,11 @@ HTML = r"""<!doctype html>
       $('graphCanvas').style.height = `${height}px`;
       $('graphCanvas').innerHTML = svg + nodes;
       document.querySelectorAll('.commit[data-sha]').forEach((node) => {
-        node.addEventListener('mouseenter', showTip);
-        node.addEventListener('mousemove', moveTip);
-        node.addEventListener('mouseleave', hideTip);
+        [node.querySelector('.dot'), node.querySelector('.label')].forEach((target) => {
+          target.addEventListener('mouseenter', scheduleTip);
+          target.addEventListener('mousemove', trackTip);
+          target.addEventListener('mouseleave', cancelTip);
+        });
         node.addEventListener('click', (event) => selectCommit(node.dataset.sha, event));
       });
     }
@@ -691,6 +696,8 @@ HTML = r"""<!doctype html>
     }
 
     async function selectCommit(sha, event) {
+      clearTimeout(state.tipTimer);
+      state.tipTimer = null;
       state.selected = sha;
       renderGraph();
       const row = rowForSha(sha);
@@ -707,12 +714,32 @@ HTML = r"""<!doctype html>
       }
     }
 
-    function showTip(event) {
-      const row = rowForSha(event.currentTarget.dataset.sha);
+    function scheduleTip(event) {
+      clearTimeout(state.tipTimer);
+      state.hoverEvent = event;
+      state.hoverCommit = event.currentTarget.closest('.commit');
+      state.tipTimer = setTimeout(() => showTip(), 500);
+    }
+
+    function trackTip(event) {
+      state.hoverEvent = event;
+      if ($('tip').style.display === 'block') moveTip(event);
+    }
+
+    function showTip() {
+      const row = rowForSha(state.hoverCommit?.dataset.sha);
       if (!row) return;
       $('tip').innerHTML = detailHtml(row);
       $('tip').style.display = 'block';
-      moveTip(event);
+      if (state.hoverEvent) moveTip(state.hoverEvent);
+    }
+
+    function cancelTip() {
+      clearTimeout(state.tipTimer);
+      state.tipTimer = null;
+      state.hoverEvent = null;
+      state.hoverCommit = null;
+      hideTip();
     }
 
     function moveTip(event) {
