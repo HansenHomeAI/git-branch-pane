@@ -85,6 +85,23 @@ class GitBranchPaneTests(unittest.TestCase):
                 self.assertGreaterEqual(edge["to"], 0)
 
     def test_layout_can_emit_all_palette_colors(self):
+        self.assertEqual(
+            git_branch_pane.GRAPH_COLORS,
+            [
+                "#4EA1FF",
+                "#1F6FFF",
+                "#35D7FF",
+                "#00A7D8",
+                "#35E06F",
+                "#00A85A",
+                "#FFD84D",
+                "#F5A800",
+                "#FF5C5C",
+                "#E33434",
+                "#B78CFF",
+                "#7B4DFF",
+            ],
+        )
         rows = [
             {
                 "kind": "commit",
