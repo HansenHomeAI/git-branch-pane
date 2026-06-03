@@ -28,7 +28,10 @@ chmod 755 "$BIN_DIR/gbp"
 
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
-  *) echo "Installed gbp to $BIN_DIR, but that directory is not on PATH." ;;
+  *)
+    echo "Installed gbp to $BIN_DIR, but that directory is not on PATH."
+    echo "Add this to your shell profile: export PATH=\"$BIN_DIR:\$PATH\""
+    ;;
 esac
 
 echo "Installed: $BIN_DIR/gbp"

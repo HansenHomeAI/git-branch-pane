@@ -18,6 +18,12 @@ curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/i
 
 That command installs or updates the machine-level `gbp` tool, then starts a local server for the Git repo under your current directory. It does not copy anything into that project and does not modify that project's Git data.
 
+Requirements:
+
+- `git`
+- `python3`
+- `~/.local/bin` in `PATH` for the short `gbp` command after install
+
 After it is installed once, run this from any Git project:
 
 ```sh
@@ -62,17 +68,7 @@ From the public repo, install without immediately launching:
 curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | GBP_NO_RUN=1 sh
 ```
 
-```sh
-python3 git_branch_pane.py /path/to/repo --port 8765
-```
-
-Open:
-
-```text
-http://127.0.0.1:8765/?repo=/path/to/repo
-```
-
-For this project:
+You can also run the Python file directly from a checkout:
 
 ```sh
 python3 git_branch_pane.py . --port 8765
@@ -133,25 +129,8 @@ The global command is written to:
 - SVG branch graph with curved colored lines, split/merge lanes, and commit dots.
 - Persistent branch head labels.
 - Hover commit dots or labels for commit specs.
-- Search commits, SHAs, authors, and refs.
 - Auto-refresh every 15 seconds.
 - No npm, no package install, no API key, no external service.
-
-## Recommended Shell Shortcut
-
-Add this to your shell profile on each computer:
-
-```sh
-gbp() {
-  python3 /absolute/path/to/git_branch_pane.py "${1:-.}" --port "${GBP_PORT:-8765}"
-}
-```
-
-Then run:
-
-```sh
-gbp .
-```
 
 The browser view is intentionally sparse: branch heads stay labeled, ordinary commits stay compact, and full details are available on hover.
 

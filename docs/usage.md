@@ -30,6 +30,8 @@ Install/update only:
 curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | GBP_NO_RUN=1 sh
 ```
 
+Requirements on each machine are `git`, `python3`, and `~/.local/bin` in `PATH` for the short `gbp` command.
+
 For an SSH host, run the pane on the remote host and tunnel the port back to your local machine.
 
 ```sh
