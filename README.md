@@ -71,6 +71,8 @@ Then run:
 gbp .
 ```
 
+The browser view is intentionally sparse: branch heads stay labeled, ordinary commits stay compact, and full details are available on hover.
+
 ## Options Compared
 
 1. Local web pane in Codex Browser: best working path now. Fully implementable and portable over SSH.
