@@ -313,9 +313,9 @@ HTML = r"""<!doctype html>
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0b0c0e;
-      --pane: #151719;
-      --rail: #101214;
+      --bg: #111111;
+      --pane: #111111;
+      --rail: #111111;
       --line: #2a2f35;
       --text: #eef1f4;
       --muted: #939aa3;
@@ -335,7 +335,7 @@ HTML = r"""<!doctype html>
       height: 100vh;
       display: flex;
       align-items: stretch;
-      background: #090a0b;
+      background: #111111;
     }
     .pane {
       width: min(360px, 100vw);
@@ -372,7 +372,6 @@ HTML = r"""<!doctype html>
       right: 0;
       display: flex;
       align-items: center;
-      border-bottom: 1px solid rgba(255,255,255,.035);
       cursor: default;
     }
     .commit:hover { background: rgba(255,255,255,.055); }
@@ -453,9 +452,7 @@ HTML = r"""<!doctype html>
     }
     .rest {
       flex: 1;
-      background:
-        linear-gradient(90deg, rgba(255,255,255,.025), transparent 34px),
-        #0b0c0e;
+      background: #111111;
     }
     @media (max-width: 520px) {
       .pane { width: 100vw; min-width: 100vw; }
