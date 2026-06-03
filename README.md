@@ -10,6 +10,24 @@ Codex does not currently document a native API for adding custom permanent sideb
 
 ## Run
 
+After installing, run this from any Git project:
+
+```sh
+gbp
+```
+
+That starts the pane for the repository under your current directory.
+
+## Install
+
+From this checkout:
+
+```sh
+./scripts/install-gbp
+```
+
+The installer copies the pane to `~/.local/share/git-branch-pane/` and writes the `gbp` command to `~/.local/bin/`.
+
 ```sh
 python3 git_branch_pane.py /path/to/repo --port 8765
 ```
