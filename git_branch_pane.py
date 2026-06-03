@@ -357,12 +357,11 @@ HTML = r"""<!doctype html>
       background: #111111;
     }
     .pane {
-      width: min(360px, 100vw);
-      min-width: min(360px, 100vw);
+      width: 100vw;
+      min-width: 0;
       height: 100vh;
       background: var(--pane);
       border-right: 1px solid #2c3137;
-      box-shadow: 12px 0 36px rgba(0,0,0,.2);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -479,10 +478,10 @@ HTML = r"""<!doctype html>
     .rest {
       flex: 1;
       background: #111111;
+      display: none;
     }
     @media (max-width: 520px) {
       .pane { width: 100vw; min-width: 100vw; }
-      .rest { display: none; }
     }
   </style>
 </head>
@@ -592,6 +591,7 @@ HTML = r"""<!doctype html>
       const layout = commits;
       const maxLane = Math.max(0, ...layout.map((row) => row.maxLane));
       const graphWidth = leftPad + (maxLane + 1) * laneGap + 204;
+      const canvasWidth = Math.max(graphWidth, $('graphWrap').clientWidth);
       const height = topPad * 2 + layout.length * rowH;
       const paths = [];
 
@@ -612,7 +612,7 @@ HTML = r"""<!doctype html>
         });
       });
 
-      const svg = `<svg id="graphSvg" width="${graphWidth}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      const svg = `<svg id="graphSvg" width="${canvasWidth}" height="${height}" xmlns="http://www.w3.org/2000/svg">
         <g fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${paths.join('')}</g>
       </svg>`;
       const nodes = layout.map((row) => {
@@ -631,7 +631,7 @@ HTML = r"""<!doctype html>
         </div>`;
       }).join('');
 
-      $('graphCanvas').style.width = `${graphWidth}px`;
+      $('graphCanvas').style.width = `${canvasWidth}px`;
       $('graphCanvas').style.height = `${height}px`;
       $('graphCanvas').innerHTML = svg + nodes;
       document.querySelectorAll('.commit[data-sha]').forEach((node) => {
@@ -786,6 +786,9 @@ HTML = r"""<!doctype html>
         event.preventDefault();
         load();
       }
+    });
+    window.addEventListener('resize', () => {
+      if (state.rows.length) renderGraph();
     });
     setInterval(load, 15000);
     load();
