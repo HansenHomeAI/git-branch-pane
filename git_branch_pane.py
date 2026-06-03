@@ -711,8 +711,15 @@ HTML = r"""<!doctype html>
     function moveTip(event) {
       const tip = $('tip');
       const pad = 14;
-      const x = Math.min(window.innerWidth - tip.offsetWidth - pad, event.clientX + pad);
-      const y = Math.min(window.innerHeight - tip.offsetHeight - pad, event.clientY + pad);
+      const nextToCursor = event.clientX + pad;
+      const leftOfCursor = event.clientX - tip.offsetWidth - pad;
+      const belowCursor = event.clientY + pad;
+      const aboveCursor = event.clientY - tip.offsetHeight - pad;
+      const x = nextToCursor + tip.offsetWidth <= window.innerWidth - pad ? nextToCursor : leftOfCursor;
+      let y = belowCursor;
+      if (belowCursor + tip.offsetHeight > window.innerHeight - pad) {
+        y = aboveCursor >= pad ? aboveCursor : window.innerHeight - tip.offsetHeight - pad;
+      }
       tip.style.left = `${Math.max(pad, x)}px`;
       tip.style.top = `${Math.max(pad, y)}px`;
     }
