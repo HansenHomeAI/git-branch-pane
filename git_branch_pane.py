@@ -393,7 +393,6 @@ HTML = r"""<!doctype html>
       cursor: default;
     }
     .commit:hover { background: rgba(255,255,255,.055); }
-    .commit.selected { background: rgba(255,255,255,.07); }
     .dot {
       position: absolute;
       width: 10px;
@@ -503,7 +502,6 @@ HTML = r"""<!doctype html>
       limit: new URLSearchParams(location.search).get('limit') || '1000',
       rows: [],
       branches: [],
-      selected: null,
       tipTimer: null,
       hoverEvent: null,
       hoverCommit: null,
@@ -620,12 +618,11 @@ HTML = r"""<!doctype html>
         const x = leftPad + row.lane * laneGap;
         const names = branchNamesFor(row);
         const isHead = names.length > 0;
-        const selected = state.selected === row.hash ? ' selected' : '';
         const color = graphColor(row.color);
         const refs = names.slice(0, 2).map((name) => `<span class="ref" style="background:${color};color:${colorText(color)}">${html(name)}</span>`).join('');
         const text = isHead ? refs : html(row.subject);
         const title = `${row.subject}\n${row.short}\n${row.author} - ${row.relativeDate}\n${names.join(', ')}`;
-        return `<div class="commit ${isHead ? 'head-row' : ''}${selected}" data-sha="${html(row.hash)}" style="top:${y - rowH / 2}px">
+        return `<div class="commit ${isHead ? 'head-row' : ''}" data-sha="${html(row.hash)}" style="top:${y - rowH / 2}px">
           <span class="dot ${row.isMerge ? 'merge' : ''}" style="left:${x}px;top:${rowH / 2}px;background:${color}"></span>
           <span class="label" style="left:${labelLeftFor(row)}px;right:8px" title="${html(title)}">${text}</span>
         </div>`;
@@ -698,8 +695,6 @@ HTML = r"""<!doctype html>
     async function selectCommit(sha, event) {
       clearTimeout(state.tipTimer);
       state.tipTimer = null;
-      state.selected = sha;
-      renderGraph();
       const row = rowForSha(sha);
       if (!row || !branchNamesFor(row).length) return;
       try {
