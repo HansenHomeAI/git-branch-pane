@@ -417,7 +417,7 @@ HTML = r"""<!doctype html>
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      border-radius: 7px;
+      border-radius: 999px;
       padding: 2px 8px 3px;
       color: #071018;
       background: #9bd1ff;
