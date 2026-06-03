@@ -356,34 +356,6 @@ HTML = r"""<!doctype html>
       color: var(--muted);
       font: 10px var(--sans);
     }
-    .heads {
-      min-height: 32px;
-      max-height: 62px;
-      display: flex;
-      gap: 6px;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      overflow: hidden;
-      padding: 6px 8px;
-      background: #111417;
-      border-bottom: 1px solid var(--line);
-    }
-    .head {
-      max-width: 190px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      border: 1px solid #343b43;
-      border-left-width: 4px;
-      border-radius: 6px;
-      padding: 3px 7px 4px;
-      color: #e8edf2;
-      background: #1b1f23;
-      font-size: 11px;
-      font-weight: 750;
-      cursor: pointer;
-    }
-    .head.current { background: #203428; border-color: #3d684b; }
     .graph-wrap {
       position: relative;
       flex: 1;
@@ -508,7 +480,6 @@ HTML = r"""<!doctype html>
           <div id="repoMeta" class="repo-meta">Loading...</div>
         </div>
       </div>
-      <div id="heads" class="heads"></div>
       <div id="graphWrap" class="graph-wrap">
         <div id="graphCanvas" class="graph-canvas">
           <svg id="graphSvg" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -558,27 +529,6 @@ HTML = r"""<!doctype html>
       return [...new Set([...exact, ...decorated])];
     }
 
-    function renderHeads(layout) {
-      const rowByShort = new Map(layout.map((row) => [row.short, row]));
-      $('heads').innerHTML = state.branches.map((branch) => {
-        const row = rowByShort.get(branch.sha);
-        const color = graphColor(row ? row.color : 0);
-        const cls = branch.current ? 'head current' : 'head';
-        const title = `${branch.name}\n${branch.sha}\n${branch.subject || ''}`;
-        return `<span class="${cls}" style="border-left-color:${color}" title="${html(title)}" data-head="${html(branch.name)}">${html(branch.name)}</span>`;
-      }).join('');
-      document.querySelectorAll('[data-head]').forEach((node) => {
-        node.addEventListener('click', () => {
-          const branch = state.branches.find((item) => item.name === node.dataset.head);
-          const row = branch && state.rows.find((item) => item.short === branch.sha);
-          if (row) {
-            $('graphWrap').scrollTop = Math.max(0, topPad + row.index * rowH - 56);
-            selectCommit(row.hash);
-          }
-        });
-      });
-    }
-
     function linePath(x1, y1, x2, y2) {
       if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
       const bend = Math.max(14, Math.abs(x2 - x1) * .7);
@@ -592,7 +542,6 @@ HTML = r"""<!doctype html>
         return;
       }
       const layout = commits;
-      renderHeads(layout);
       const maxLane = Math.max(0, ...layout.map((row) => row.maxLane));
       const graphWidth = leftPad + (maxLane + 1) * laneGap + 204;
       const height = topPad * 2 + layout.length * rowH;
