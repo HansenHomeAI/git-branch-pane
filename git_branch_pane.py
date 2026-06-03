@@ -930,7 +930,7 @@ def main(argv: list[str] | None = None) -> int:
     actual_host, actual_port = server.server_address[:2]
     url_host = "127.0.0.1" if actual_host in {"0.0.0.0", ""} else actual_host
     url = f"http://{url_host}:{actual_port}/?repo={urllib.parse.quote(root_or_error)}"
-    print(f"Git Branch Pane: {url}")
+    print(f"Git Branch Pane: {url}", flush=True)
     if args.open:
         webbrowser.open(url)
     try:

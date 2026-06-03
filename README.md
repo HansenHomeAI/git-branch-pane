@@ -16,7 +16,7 @@ From any Git project on any machine:
 curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | sh
 ```
 
-That command installs or updates the machine-level `gbp` tool, then starts a local server for the Git repo under your current directory. It does not copy anything into that project and does not modify that project's Git data.
+That command installs or updates the machine-level `gbp` tool, then starts a persistent local background server for the Git repo under your current directory. It does not copy anything into that project and does not modify that project's Git data.
 
 Requirements:
 
@@ -29,6 +29,9 @@ After it is installed once, run this from any Git project:
 ```sh
 gbp
 ```
+
+`gbp` starts or restarts the local background server, prints the URL, and returns. It is not tied to the terminal or Codex task that launched it, so you can leave and come back later.
+There is no server timeout; the normal `gbp` path is detached on purpose.
 
 Or point it at a specific repo:
 
@@ -50,7 +53,17 @@ After installing, run this from any Git project:
 gbp
 ```
 
-That starts the pane for the repository under your current directory.
+That starts or restarts the persistent pane for the repository under your current directory.
+
+Useful controls:
+
+```sh
+gbp --status
+gbp --stop
+gbp --foreground
+```
+
+Use `gbp --foreground` only when you intentionally want the server attached to the current terminal.
 
 ## Install
 
@@ -123,6 +136,14 @@ The global command is written to:
 ```text
 ~/.local/bin/gbp
 ```
+
+The persistent server state lives in:
+
+```text
+~/.local/state/git-branch-pane/
+```
+
+That directory stores the daemon PID, latest URL, selected repo, and log.
 
 ## Features
 

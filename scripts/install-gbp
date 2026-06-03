@@ -7,22 +7,17 @@ BIN_DIR="${GBP_BIN_DIR:-$HOME/.local/bin}"
 
 mkdir -p "$APP_DIR" "$BIN_DIR"
 cp "$ROOT/git_branch_pane.py" "$APP_DIR/git_branch_pane.py"
-chmod 755 "$APP_DIR/git_branch_pane.py"
+cp "$ROOT/scripts/gbp" "$APP_DIR/gbp-launcher"
+chmod 755 "$APP_DIR/git_branch_pane.py" "$APP_DIR/gbp-launcher"
 
 cat > "$BIN_DIR/gbp" <<EOF
 #!/usr/bin/env sh
 set -eu
 
-if [ "\$#" -eq 0 ]; then
-  set -- .
-fi
+GBP_APP_PY="$APP_DIR/git_branch_pane.py"
+export GBP_APP_PY
 
-EXTRA_OPEN=
-if [ "\${GBP_OPEN:-1}" != "0" ] && [ -z "\${SSH_CONNECTION:-}" ]; then
-  EXTRA_OPEN=--open
-fi
-
-exec python3 "$APP_DIR/git_branch_pane.py" "\$@" \$EXTRA_OPEN
+exec "$APP_DIR/gbp-launcher" "\$@"
 EOF
 chmod 755 "$BIN_DIR/gbp"
 
@@ -36,3 +31,4 @@ esac
 
 echo "Installed: $BIN_DIR/gbp"
 echo "Run from any Git repo: gbp"
+echo "Status: gbp --status"

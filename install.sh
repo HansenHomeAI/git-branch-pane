@@ -44,5 +44,5 @@ if [ "${GBP_NO_RUN:-0}" = "1" ]; then
 fi
 
 echo
-echo "Starting Git Branch Pane for: $TARGET_REPO"
-exec "$BIN_DIR/gbp" "$TARGET_REPO" --host "$HOST" --port "$PORT"
+echo "Starting persistent Git Branch Pane for: $TARGET_REPO"
+"$BIN_DIR/gbp" "$TARGET_REPO" --host "$HOST" --port "$PORT"
