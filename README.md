@@ -16,12 +16,18 @@ From any Git project on any machine:
 curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | sh
 ```
 
+On Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.ps1 | iex
+```
+
 That command installs or updates the machine-level `gbp` tool, then starts a persistent local background server for the Git repo under your current directory. It does not copy anything into that project and does not modify that project's Git data.
 
 Requirements:
 
 - `git`
-- `python3`
+- Python 3.9+ as `python3`, `python`, or `py -3`
 - `~/.local/bin` in `PATH` for the short `gbp` command after install
 
 After it is installed once, run this from any Git project:
@@ -79,6 +85,12 @@ From the public repo, install without immediately launching:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | GBP_NO_RUN=1 sh
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:GBP_NO_RUN = "1"; irm https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.ps1 | iex
 ```
 
 You can also run the Python file directly from a checkout:

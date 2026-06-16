@@ -6,6 +6,12 @@ Install or update and immediately start the persistent pane from any Git reposit
 curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | sh
 ```
 
+On Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.ps1 | iex
+```
+
 After first install, run:
 
 ```sh
@@ -32,7 +38,7 @@ Install/update only:
 curl -fsSL https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.sh | GBP_NO_RUN=1 sh
 ```
 
-Requirements on each machine are `git`, `python3`, and `~/.local/bin` in `PATH` for the short `gbp` command.
+Requirements on each machine are `git`, Python 3.9+ available as `python3`, `python`, or `py -3`, and `~/.local/bin` in `PATH` for the short `gbp` command.
 
 Server controls:
 

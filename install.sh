@@ -22,7 +22,28 @@ need() {
 }
 
 need git
-need python3
+
+python_ok() {
+  "$1" ${2:+"$2"} -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1
+}
+
+if [ -z "${GBP_PYTHON_EXE:-}" ]; then
+  if command -v python3 >/dev/null 2>&1 && python_ok python3 ""; then
+    GBP_PYTHON_EXE=python3
+    GBP_PYTHON_ARG=
+  elif command -v python >/dev/null 2>&1 && python_ok python ""; then
+    GBP_PYTHON_EXE=python
+    GBP_PYTHON_ARG=
+  elif command -v py >/dev/null 2>&1 && python_ok py "-3"; then
+    GBP_PYTHON_EXE=py
+    GBP_PYTHON_ARG=-3
+  else
+    echo "Missing required Python 3. Install Python 3.9+ or set GBP_PYTHON_EXE." >&2
+    exit 1
+  fi
+fi
+export GBP_PYTHON_EXE
+export GBP_PYTHON_ARG
 
 mkdir -p "$APP_DIR" "$BIN_DIR"
 

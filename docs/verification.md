@@ -13,6 +13,14 @@ GBP_REPO_URL="file://$PWD" GBP_NO_RUN=1 HOME="$(mktemp -d)" sh install.sh
 
 The second command proves the paste-on-any-machine installer can clone the repo, install `gbp`, and exit without launching the server.
 
+Windows installer verification, from PowerShell:
+
+```powershell
+$env:GBP_REPO_URL = "file:///$((Get-Location).Path -replace '\\','/')"
+$env:GBP_NO_RUN = "1"
+.\install.ps1
+```
+
 Persistent-server verification:
 
 ```sh

@@ -7,19 +7,34 @@ BIN_DIR="${GBP_BIN_DIR:-$HOME/.local/bin}"
 
 mkdir -p "$APP_DIR" "$BIN_DIR"
 cp "$ROOT/git_branch_pane.py" "$APP_DIR/git_branch_pane.py"
+cp "$ROOT/gbp_launcher.py" "$APP_DIR/gbp_launcher.py"
 cp "$ROOT/scripts/gbp" "$APP_DIR/gbp-launcher"
-chmod 755 "$APP_DIR/git_branch_pane.py" "$APP_DIR/gbp-launcher"
+chmod 755 "$APP_DIR/git_branch_pane.py" "$APP_DIR/gbp_launcher.py" "$APP_DIR/gbp-launcher"
 
 cat > "$BIN_DIR/gbp" <<EOF
 #!/usr/bin/env sh
 set -eu
 
 GBP_APP_PY="$APP_DIR/git_branch_pane.py"
+GBP_LAUNCHER_PY="$APP_DIR/gbp_launcher.py"
 export GBP_APP_PY
+export GBP_LAUNCHER_PY
 
 exec "$APP_DIR/gbp-launcher" "\$@"
 EOF
 chmod 755 "$BIN_DIR/gbp"
+
+if command -v cygpath >/dev/null 2>&1; then
+  APP_PY_WIN=$(cygpath -w "$APP_DIR/git_branch_pane.py")
+  LAUNCHER_PY_WIN=$(cygpath -w "$APP_DIR/gbp_launcher.py")
+  cat > "$BIN_DIR/gbp.cmd" <<EOF
+@echo off
+setlocal
+set "GBP_APP_PY=$APP_PY_WIN"
+python "$LAUNCHER_PY_WIN" %*
+if errorlevel 9009 py -3 "$LAUNCHER_PY_WIN" %*
+EOF
+fi
 
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
