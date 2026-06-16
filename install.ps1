@@ -15,6 +15,13 @@ function Require-Command($Name) {
     }
 }
 
+function Invoke-Git {
+    & git @args
+    if ($LASTEXITCODE -ne 0) {
+        throw "git $($args -join ' ') failed with exit code $LASTEXITCODE"
+    }
+}
+
 function Find-Python {
     $candidates = @(
         @{ Exe = "python3"; Args = @() },
@@ -25,9 +32,16 @@ function Find-Python {
         if (-not (Get-Command $candidate.Exe -ErrorAction SilentlyContinue)) {
             continue
         }
-        & $candidate.Exe @($candidate.Args) -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 9) else 1)" *> $null
-        if ($LASTEXITCODE -eq 0) {
-            return [pscustomobject]$candidate
+        $previousPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = "Continue"
+            & $candidate.Exe @($candidate.Args) -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 9) else 1)" > $null 2> $null
+            if ($LASTEXITCODE -eq 0) {
+                return [pscustomobject]$candidate
+            }
+        } catch {
+        } finally {
+            $ErrorActionPreference = $previousPreference
         }
     }
     throw "Missing required Python 3. Install Python 3.9+ from python.org, winget, or the Microsoft Store."
@@ -53,14 +67,14 @@ $Python = Find-Python
 New-Item -ItemType Directory -Force -Path $AppDir, $BinDir | Out-Null
 
 if (Test-Path (Join-Path $SourceDir ".git")) {
-    git -C $SourceDir remote set-url origin $RepoUrl *> $null
-    git -C $SourceDir fetch --depth 1 origin $Ref
-    git -C $SourceDir checkout -B $Ref "origin/$Ref"
+    Invoke-Git -C $SourceDir remote set-url origin $RepoUrl
+    Invoke-Git -C $SourceDir fetch --depth 1 origin $Ref
+    Invoke-Git -C $SourceDir checkout -B $Ref "origin/$Ref"
 } else {
     if (Test-Path $SourceDir) {
         Move-Item $SourceDir "$SourceDir.backup.$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
     }
-    git clone --depth 1 --branch $Ref $RepoUrl $SourceDir
+    Invoke-Git clone --depth 1 --branch $Ref $RepoUrl $SourceDir
 }
 
 $AppPy = Join-Path $AppDir "git_branch_pane.py"

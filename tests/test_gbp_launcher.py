@@ -24,6 +24,12 @@ class LauncherArgumentTests(unittest.TestCase):
         self.assertEqual(mode, "foreground")
         self.assertEqual(args, ["."])
 
+    def test_windows_open_default_is_off(self):
+        with mock.patch.object(gbp_launcher, "is_windows", return_value=True):
+            default_open = "0" if gbp_launcher.is_windows() else "1"
+
+        self.assertEqual(default_open, "0")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,6 +12,8 @@ On Windows PowerShell:
 irm https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.ps1 | iex
 ```
 
+Windows prints the URL and leaves browser opening to you by default. Use `GBP_OPEN=1` only when you explicitly want automatic browser launch.
+
 After first install, run:
 
 ```sh

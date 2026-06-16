@@ -13,6 +13,8 @@ import json
 import os
 import subprocess
 import sys
+import threading
+import time
 import textwrap
 import urllib.parse
 import webbrowser
@@ -37,16 +39,84 @@ GRAPH_COLORS = [
     "#D96F63",
 ]
 COLOR_SEQUENCE = [0, 2, 6, 1, 3, 7, 4, 5, 8, 9, 10, 11]
+GIT_TIMEOUT_SECONDS = 15
+GIT_CACHE_SECONDS = 2
+_GIT_CACHE_LOCK = threading.Condition()
+_GIT_CACHE: dict[tuple[str, tuple[str, ...]], tuple[float, subprocess.CompletedProcess[str]]] = {}
+_GIT_IN_FLIGHT: set[tuple[str, tuple[str, ...]]] = set()
+
+
+def hidden_subprocess_kwargs() -> dict[str, object]:
+    kwargs: dict[str, object] = {"stdin": subprocess.DEVNULL}
+    if sys.platform == "win32":
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = 0
+        kwargs["startupinfo"] = startupinfo
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    return kwargs
+
+
+def timeout_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "replace")
+    return value
 
 
 def run_git(repo: str, args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", "-C", repo, *args],
-        check=check,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    command_key = (repo, tuple(args))
+    now = time.monotonic()
+    with _GIT_CACHE_LOCK:
+        cached = _GIT_CACHE.get(command_key)
+        if cached and now - cached[0] < GIT_CACHE_SECONDS:
+            result = cached[1]
+            if check and result.returncode:
+                raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+            return result
+        while command_key in _GIT_IN_FLIGHT:
+            _GIT_CACHE_LOCK.wait(timeout=GIT_TIMEOUT_SECONDS)
+            cached = _GIT_CACHE.get(command_key)
+            if cached and time.monotonic() - cached[0] < GIT_CACHE_SECONDS:
+                result = cached[1]
+                if check and result.returncode:
+                    raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+                return result
+        _GIT_IN_FLIGHT.add(command_key)
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", repo, *args],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=GIT_TIMEOUT_SECONDS,
+            **hidden_subprocess_kwargs(),
+        )
+    except subprocess.TimeoutExpired as exc:
+        result = subprocess.CompletedProcess(
+            exc.cmd or ["git", "-C", repo, *args],
+            124,
+            timeout_text(exc.stdout),
+            timeout_text(exc.stderr) or "Git command timed out",
+        )
+    finally:
+        with _GIT_CACHE_LOCK:
+            _GIT_IN_FLIGHT.discard(command_key)
+            _GIT_CACHE_LOCK.notify_all()
+
+    with _GIT_CACHE_LOCK:
+        _GIT_CACHE[command_key] = (time.monotonic(), result)
+        if len(_GIT_CACHE) > 256:
+            oldest = sorted(_GIT_CACHE.items(), key=lambda item: item[1][0])[:64]
+            for old_key, _ in oldest:
+                _GIT_CACHE.pop(old_key, None)
+
+    if check and result.returncode:
+        raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+    return result
 
 
 def repo_root(path: str) -> str:
@@ -295,8 +365,20 @@ def copy_to_clipboard(text: str) -> dict[str, object]:
     errors = []
     for command in commands:
         try:
-            result = subprocess.run(command, input=text, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+            result = subprocess.run(
+                command,
+                input=text,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=5,
+                **hidden_subprocess_kwargs(),
+            )
         except FileNotFoundError:
+            continue
+        except subprocess.TimeoutExpired:
+            errors.append(f"{command[0]} timed out")
             continue
         if result.returncode == 0:
             return {"ok": True, "method": command[0]}

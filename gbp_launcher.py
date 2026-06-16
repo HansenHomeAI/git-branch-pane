@@ -27,6 +27,17 @@ def is_windows() -> bool:
     return os.name == "nt"
 
 
+def hidden_subprocess_kwargs() -> dict[str, object]:
+    kwargs: dict[str, object] = {"stdin": subprocess.DEVNULL}
+    if is_windows():
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = 0
+        kwargs["startupinfo"] = startupinfo
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    return kwargs
+
+
 def pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
@@ -134,6 +145,8 @@ class Launcher:
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
+            timeout=10,
+            **hidden_subprocess_kwargs(),
         )
         return result.stdout.strip() if result.returncode == 0 else str(Path(repo).resolve())
 
@@ -245,7 +258,8 @@ def parse_args(argv: list[str]) -> tuple[str, list[str]]:
 def main(argv: list[str] | None = None) -> int:
     mode, repo_args = parse_args(list(argv or []))
     launcher = Launcher()
-    open_browser = os.environ.get("GBP_OPEN", "1") != "0" and "SSH_CONNECTION" not in os.environ
+    default_open = "0" if is_windows() else "1"
+    open_browser = os.environ.get("GBP_OPEN", default_open) != "0" and "SSH_CONNECTION" not in os.environ
 
     if mode == "stop":
         return launcher.stop()

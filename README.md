@@ -22,6 +22,8 @@ On Windows PowerShell:
 irm https://raw.githubusercontent.com/HansenHomeAI/git-branch-pane/main/install.ps1 | iex
 ```
 
+Windows prints the local URL instead of opening a browser tab automatically. Open the printed URL in your browser; set `GBP_OPEN=1` only if you intentionally want the installer or `gbp` to open a tab for you.
+
 That command installs or updates the machine-level `gbp` tool, then starts a persistent local background server for the Git repo under your current directory. It does not copy anything into that project and does not modify that project's Git data.
 
 Requirements:
@@ -38,6 +40,7 @@ gbp
 
 `gbp` starts or restarts the local background server, prints the URL, and returns. It is not tied to the terminal or Codex task that launched it, so you can leave and come back later.
 There is no server timeout; the normal `gbp` path is detached on purpose.
+On Windows, `gbp` does not auto-open a browser tab by default; this avoids repeated tab creation during setup or remote testing.
 
 Or point it at a specific repo:
 
