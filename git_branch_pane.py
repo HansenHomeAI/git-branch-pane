@@ -37,13 +37,21 @@ GRAPH_COLORS = [
     "#8D75D8",
     "#CFA64A",
     "#D96F63",
+    "#E07AA8",
+    "#B88AF0",
+    "#7BCFA4",
+    "#E0B85A",
 ]
-COLOR_SEQUENCE = [0, 2, 6, 1, 3, 7, 4, 5, 8, 9, 10, 11]
+COLOR_SEQUENCE = [0, 2, 6, 12, 4, 15, 8, 14, 11, 1, 13, 3, 10, 5, 7, 9]
+RESERVED_BRANCH_COLORS = {"main": 0, "development": 6}
+BRANCH_COLOR_SEQUENCE = [2, 12, 4, 15, 8, 14, 11, 1, 13, 3, 10, 5, 7, 9]
+BRANCH_COLOR_SCHEMA_VERSION = 3
 GIT_TIMEOUT_SECONDS = 15
 GIT_CACHE_SECONDS = 2
 _GIT_CACHE_LOCK = threading.Condition()
 _GIT_CACHE: dict[tuple[str, tuple[str, ...]], tuple[float, subprocess.CompletedProcess[str]]] = {}
 _GIT_IN_FLIGHT: set[tuple[str, tuple[str, ...]]] = set()
+_BRANCH_COLOR_LOCK = threading.Lock()
 
 
 def hidden_subprocess_kwargs() -> dict[str, object]:
@@ -144,6 +152,151 @@ def first(params: dict[str, list[str]], key: str, default: str = "") -> str:
     return values[0] if values else default
 
 
+def default_state_dir() -> Path:
+    return Path(os.environ.get("GBP_STATE_DIR", Path.home() / ".local" / "state" / "git-branch-pane"))
+
+
+def branch_color_state_file() -> Path:
+    return default_state_dir() / "branch-colors.json"
+
+
+def canonical_branch_name(name: str) -> str:
+    clean = name.strip()
+    for prefix in ("refs/heads/", "refs/remotes/"):
+        if clean.startswith(prefix):
+            clean = clean[len(prefix) :]
+    if clean.startswith("tag:") or clean == "HEAD" or "/HEAD" in clean or "HEAD ->" in clean:
+        return ""
+    parts = clean.split("/", 1)
+    if len(parts) == 2 and parts[0] in {"origin", "upstream"}:
+        clean = parts[1]
+    return clean
+
+
+def load_branch_color_state(path: Path) -> dict[str, object]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"repos": {}}
+    return data if isinstance(data, dict) else {"repos": {}}
+
+
+def save_branch_color_state(path: Path, data: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
+def branch_sort_key(date: str, name: str) -> tuple[int, str]:
+    try:
+        return (-int(date), name.lower())
+    except ValueError:
+        return (0, name.lower())
+
+
+def branch_ref_names(repo: str) -> list[str]:
+    result = run_git(
+        repo,
+        ["for-each-ref", "--format=%(committerdate:unix)%00%(refname)", "refs/heads", "refs/remotes"],
+        check=False,
+    )
+    names: dict[str, str] = {}
+    for refname in result.stdout.splitlines():
+        date, _, refname = refname.partition("\x00")
+        name = canonical_branch_name(refname)
+        if name:
+            names[name] = max(date, names.get(name, ""), key=lambda value: int(value or 0))
+    return sorted(names, key=lambda name: branch_sort_key(names[name], name))
+
+
+def branch_color_assignments(repo: str) -> dict[str, int]:
+    active = branch_ref_names(repo)
+    repo_key = os.path.abspath(repo)
+    state_path = branch_color_state_file()
+    with _BRANCH_COLOR_LOCK:
+        state = load_branch_color_state(state_path)
+        repos = state.setdefault("repos", {})
+        if not isinstance(repos, dict):
+            repos = {}
+            state["repos"] = repos
+        repo_state = repos.setdefault(repo_key, {})
+        if not isinstance(repo_state, dict):
+            repo_state = {}
+            repos[repo_key] = repo_state
+        stored = repo_state.setdefault("branches", {})
+        if not isinstance(stored, dict):
+            stored = {}
+            repo_state["branches"] = stored
+
+        changed = False
+        now = time.time()
+        if repo_state.get("schemaVersion") != BRANCH_COLOR_SCHEMA_VERSION:
+            stored = {
+                branch: entry
+                for branch, entry in stored.items()
+                if branch in RESERVED_BRANCH_COLORS and isinstance(entry, dict)
+            }
+            repo_state["branches"] = stored
+            repo_state["schemaVersion"] = BRANCH_COLOR_SCHEMA_VERSION
+            changed = True
+
+        active_colors: dict[str, int] = {}
+        used_colors: set[int] = set()
+
+        for branch in active:
+            reserved = RESERVED_BRANCH_COLORS.get(branch)
+            if reserved is None:
+                continue
+            entry = stored.get(branch)
+            if not isinstance(entry, dict) or entry.get("color") != reserved:
+                stored[branch] = {"color": reserved, "lastAssigned": now}
+                changed = True
+            active_colors[branch] = reserved
+            used_colors.add(reserved)
+
+        pending: list[str] = []
+        seen_counts: dict[int, int] = {}
+        max_reuse = max(1, (len([branch for branch in active if branch not in RESERVED_BRANCH_COLORS]) + len(BRANCH_COLOR_SEQUENCE) - 1) // len(BRANCH_COLOR_SEQUENCE))
+        for branch in active:
+            if branch in active_colors:
+                continue
+            entry = stored.get(branch)
+            color = entry.get("color") if isinstance(entry, dict) else None
+            if isinstance(color, int) and color in BRANCH_COLOR_SEQUENCE and seen_counts.get(color, 0) < max_reuse:
+                active_colors[branch] = color
+                used_colors.add(color)
+                seen_counts[color] = seen_counts.get(color, 0) + 1
+            else:
+                pending.append(branch)
+
+        def last_assigned(color: int) -> float:
+            values = [
+                float(entry.get("lastAssigned", 0))
+                for entry in stored.values()
+                if isinstance(entry, dict) and entry.get("color") == color
+            ]
+            return max(values) if values else 0
+
+        color_last_assigned = {color: last_assigned(color) for color in BRANCH_COLOR_SEQUENCE}
+
+        for branch in pending:
+            candidates = [
+                color for color in BRANCH_COLOR_SEQUENCE if seen_counts.get(color, 0) < max_reuse
+            ] or BRANCH_COLOR_SEQUENCE
+            color = min(candidates, key=lambda item: (color_last_assigned[item], BRANCH_COLOR_SEQUENCE.index(item)))
+            color_last_assigned[color] = now + len(active_colors) / 1000
+            stored[branch] = {"color": color, "lastAssigned": color_last_assigned[color]}
+            active_colors[branch] = color
+            used_colors.add(color)
+            seen_counts[color] = seen_counts.get(color, 0) + 1
+            changed = True
+
+        if changed:
+            save_branch_color_state(state_path, state)
+        return active_colors
+
+
 def status_summary(repo: str) -> dict[str, object]:
     branch = run_git(repo, ["branch", "--show-current"], check=False).stdout.strip()
     head = run_git(repo, ["rev-parse", "--short", "HEAD"], check=False).stdout.strip()
@@ -191,16 +344,33 @@ def graph(repo: str, limit: int) -> dict[str, object]:
                 "isMerge": len(parents.split()) > 1 if parents else False,
             }
         )
-    return {"rows": layout_rows(rows)}
+    return {"rows": layout_rows(rows, branch_color_assignments(repo))}
 
 
-def layout_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+def preferred_branch_color(row: dict[str, object], branch_colors: dict[str, int]) -> int | None:
+    branches = sorted(
+        {canonical_branch_name(str(name)) for name in row.get("decorations", [])},
+        key=lambda name: (0 if name == "main" else 1 if name == "development" else 2, name.lower()),
+    )
+    for branch in branches:
+        if branch and branch in branch_colors:
+            return branch_colors[branch]
+    return None
+
+
+def layout_rows(rows: list[dict[str, object]], branch_colors: dict[str, int] | None = None) -> list[dict[str, object]]:
     """Assign graph lanes and row-local edges for a topo-ordered commit list."""
     active: list[str] = []
     color_by_hash: dict[str, int] = {}
     laid_out: list[dict[str, object]] = []
     max_lane = 0
     next_color = 0
+    branch_colors = branch_colors or {}
+    preferred_color_by_hash = {
+        str(row["hash"]): color
+        for row in rows
+        if (color := preferred_branch_color(row, branch_colors)) is not None
+    }
 
     def color_for(commit_hash: str, preferred: int | None = None) -> int:
         nonlocal next_color
@@ -222,7 +392,7 @@ def layout_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
             lane = active.index(commit_hash)
 
         before = active.copy()
-        commit_color = color_for(commit_hash)
+        commit_color = color_for(commit_hash, preferred_color_by_hash.get(commit_hash))
         parents = [str(parent) for parent in row.get("parents", [])]
         after = active.copy()
         after.pop(lane)
@@ -230,7 +400,7 @@ def layout_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
 
         if parents:
             for parent_index, parent in enumerate(parents):
-                preferred = commit_color if parent_index == 0 else None
+                preferred = commit_color if parent_index == 0 else preferred_color_by_hash.get(parent)
                 color_for(parent, preferred)
 
             first_parent = parents[0]
@@ -239,7 +409,7 @@ def layout_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
             else:
                 target = min(lane, len(after))
                 after.insert(target, first_parent)
-            outgoing.append({"to": target, "color": color_by_hash[first_parent], "parent": first_parent})
+            outgoing.append({"to": target, "color": commit_color, "parent": first_parent})
 
             for extra_index, parent in enumerate(parents[1:], start=1):
                 if parent in after:
@@ -277,6 +447,7 @@ def layout_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
                 "lane": lane,
                 "rowMaxLane": row_max_lane,
                 "color": commit_color,
+                "dotColor": preferred_color_by_hash.get(commit_hash, commit_color),
                 "incoming": not introduced,
                 "outgoing": outgoing,
                 "passthrough": passthrough,
@@ -304,6 +475,7 @@ def branches(repo: str) -> dict[str, object]:
     fmt = FIELD_SEP.join(["%(refname)", "%(objectname:short)", "%(upstream:short)", "%(committerdate:relative)", "%(contents:subject)"])
     result = run_git(repo, ["for-each-ref", f"--format={fmt}", "refs/heads", "refs/remotes"], check=False)
     current = run_git(repo, ["branch", "--show-current"], check=False).stdout.strip()
+    branch_colors = branch_color_assignments(repo)
     rows = []
     for line in result.stdout.splitlines():
         refname, sha, upstream, date, subject = (line.split(FIELD_SEP) + ["", "", "", "", ""])[:5]
@@ -321,6 +493,7 @@ def branches(repo: str) -> dict[str, object]:
                 "date": date,
                 "subject": subject,
                 "current": kind == "local" and name == current,
+                "color": branch_colors.get(canonical_branch_name(name)),
             }
         )
     rows.sort(key=lambda row: (row["kind"] != "local", not row["current"], row["name"].lower()))
@@ -600,7 +773,11 @@ HTML = r"""<!doctype html>
       '#A98BEA',
       '#8D75D8',
       '#CFA64A',
-      '#D96F63'
+      '#D96F63',
+      '#E07AA8',
+      '#B88AF0',
+      '#7BCFA4',
+      '#E0B85A'
     ];
     const rowH = 38;
     const topPad = 18;
@@ -625,6 +802,21 @@ HTML = r"""<!doctype html>
 
     function graphColor(index) {
       return colors[Math.abs(Number(index) || 0) % colors.length];
+    }
+
+    function canonicalBranchName(name) {
+      const clean = String(name || '').trim();
+      if (clean.startsWith('tag:')) return '';
+      if (clean === 'HEAD' || clean.includes('/HEAD') || clean.includes('HEAD ->')) return '';
+      const slash = clean.indexOf('/');
+      if (slash > 0 && ['origin', 'upstream'].includes(clean.slice(0, slash))) return clean.slice(slash + 1);
+      return clean;
+    }
+
+    function branchColorIndex(name) {
+      const canonical = canonicalBranchName(name);
+      const branch = state.branches.find((item) => canonicalBranchName(item.name) === canonical && Number.isFinite(item.color));
+      return branch ? branch.color : null;
     }
 
     function colorText(hex) {
@@ -700,13 +892,15 @@ HTML = r"""<!doctype html>
         const x = leftPad + row.lane * laneGap;
         const names = branchNamesFor(row);
         const isHead = names.length > 0;
-        const color = graphColor(row.color);
-        const refs = names.slice(0, 2).map((name) => `<span class="ref" style="background:${color};color:${colorText(color)}">${html(name)}</span>`).join('');
+        const color = graphColor(Number.isFinite(row.dotColor) ? row.dotColor : row.color);
+        const refs = names.slice(0, 2).map((name) => {
+          const refColor = graphColor(branchColorIndex(name) ?? (Number.isFinite(row.dotColor) ? row.dotColor : row.color));
+          return `<span class="ref" style="background:${refColor};color:${colorText(refColor)}">${html(name)}</span>`;
+        }).join('');
         const text = isHead ? refs : html(row.subject);
-        const title = `${row.subject}\n${row.short}\n${row.author} - ${row.relativeDate}\n${names.join(', ')}`;
         return `<div class="commit ${isHead ? 'head-row' : ''}" data-sha="${html(row.hash)}" style="top:${y - rowH / 2}px">
           <span class="dot ${row.isMerge ? 'merge' : ''}" style="left:${x}px;top:${rowH / 2}px;background:${color}"></span>
-          <span class="label" style="left:${labelLeftFor(row)}px;right:8px" title="${html(title)}">${text}</span>
+          <span class="label" style="left:${labelLeftFor(row)}px;right:8px">${text}</span>
         </div>`;
       }).join('');
 
@@ -961,6 +1155,7 @@ class PaneHandler(BaseHTTPRequestHandler):
         payload = text.encode("utf-8")
         self.send_response(HTTPStatus.OK)
         self.send_header("content-type", content_type)
+        self.send_header("cache-control", "no-store")
         self.send_header("content-length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)

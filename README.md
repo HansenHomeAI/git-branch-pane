@@ -163,6 +163,7 @@ That directory stores the daemon PID, latest URL, selected repo, and log.
 ## Features
 
 - SVG branch graph with curved colored lines, split/merge lanes, and commit dots.
+- Stable branch colors: `main` stays blue, `development` stays purple, and other branches keep their assigned color across refreshes.
 - Persistent branch head labels.
 - Hover commit dots or labels for commit specs.
 - Auto-refresh every 15 seconds.
