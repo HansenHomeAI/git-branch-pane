@@ -33,3 +33,5 @@ GBP_OPEN=0 HOME="$tmp_home" ./scripts/gbp --stop
 ```
 
 This proves `gbp` returns while the server remains alive, exposes the repo API, and can be stopped cleanly.
+
+Freshness verification should check `/api/repo` for a `freshness` object with `intervalSeconds: 300`, then confirm that a remote-only branch appears after a fetch cycle or a direct `fetch_repo_once` test.

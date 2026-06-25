@@ -48,10 +48,14 @@ BRANCH_COLOR_SEQUENCE = [2, 12, 4, 15, 8, 14, 11, 1, 13, 3, 10, 5, 7, 9]
 BRANCH_COLOR_SCHEMA_VERSION = 3
 GIT_TIMEOUT_SECONDS = 15
 GIT_CACHE_SECONDS = 2
+GIT_FETCH_INTERVAL_SECONDS = 300
 _GIT_CACHE_LOCK = threading.Condition()
 _GIT_CACHE: dict[tuple[str, tuple[str, ...]], tuple[float, subprocess.CompletedProcess[str]]] = {}
 _GIT_IN_FLIGHT: set[tuple[str, tuple[str, ...]]] = set()
 _BRANCH_COLOR_LOCK = threading.Lock()
+_FETCH_LOCK = threading.Lock()
+_FETCH_WORKERS: dict[str, threading.Thread] = {}
+_FETCH_STATES: dict[str, dict[str, object]] = {}
 
 
 def hidden_subprocess_kwargs() -> dict[str, object]:
@@ -127,6 +131,12 @@ def run_git(repo: str, args: list[str], check: bool = True) -> subprocess.Comple
     return result
 
 
+def clear_git_cache(repo: str) -> None:
+    with _GIT_CACHE_LOCK:
+        for key in [key for key in _GIT_CACHE if key[0] == repo]:
+            _GIT_CACHE.pop(key, None)
+
+
 def repo_root(path: str) -> str:
     candidate = os.path.abspath(os.path.expanduser(path or "."))
     result = run_git(candidate, ["rev-parse", "--show-toplevel"])
@@ -150,6 +160,128 @@ def parse_query(path: str) -> tuple[str, dict[str, list[str]]]:
 def first(params: dict[str, list[str]], key: str, default: str = "") -> str:
     values = params.get(key)
     return values[0] if values else default
+
+
+def fetch_interval_seconds() -> int:
+    raw = os.environ.get("GBP_FETCH_INTERVAL_SECONDS", str(GIT_FETCH_INTERVAL_SECONDS))
+    try:
+        return max(5, int(raw))
+    except ValueError:
+        return GIT_FETCH_INTERVAL_SECONDS
+
+
+def auto_fetch_enabled() -> bool:
+    return os.environ.get("GBP_AUTO_FETCH", "1") != "0"
+
+
+def fetch_state(repo: str) -> dict[str, object]:
+    if not auto_fetch_enabled():
+        return {"enabled": False, "intervalSeconds": fetch_interval_seconds()}
+    ensure_fetch_worker(repo)
+    with _FETCH_LOCK:
+        state = dict(_FETCH_STATES.get(repo, {}))
+    state.setdefault("enabled", True)
+    state.setdefault("intervalSeconds", fetch_interval_seconds())
+    return state
+
+
+def update_fetch_state(repo: str, **updates: object) -> None:
+    with _FETCH_LOCK:
+        state = _FETCH_STATES.setdefault(repo, {"enabled": True, "intervalSeconds": fetch_interval_seconds()})
+        state.update(updates)
+
+
+def fetch_repo_once(repo: str) -> dict[str, object]:
+    started = time.time()
+    update_fetch_state(repo, inFlight=True, lastAttemptUnix=started, lastError="")
+    remotes = run_git(repo, ["remote"], check=False)
+    if remotes.returncode != 0:
+        finished = time.time()
+        error = remotes.stderr.strip() or remotes.stdout.strip() or "Unable to list git remotes"
+        update_fetch_state(
+            repo,
+            inFlight=False,
+            lastError=error,
+            lastDurationSeconds=round(finished - started, 3),
+            nextFetchUnix=finished + fetch_interval_seconds(),
+        )
+        return fetch_state(repo)
+    if not remotes.stdout.split():
+        finished = time.time()
+        update_fetch_state(
+            repo,
+            inFlight=False,
+            lastSuccessUnix=finished,
+            lastError="",
+            lastDurationSeconds=round(finished - started, 3),
+            nextFetchUnix=finished + fetch_interval_seconds(),
+            skippedReason="No remotes configured",
+        )
+        return fetch_state(repo)
+
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    try:
+        result = subprocess.run(
+            ["git", "-C", repo, "fetch", "--all", "--prune", "--quiet"],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=GIT_TIMEOUT_SECONDS,
+            env=env,
+            **hidden_subprocess_kwargs(),
+        )
+    except subprocess.TimeoutExpired as exc:
+        result = subprocess.CompletedProcess(
+            exc.cmd or ["git", "-C", repo, "fetch", "--all", "--prune", "--quiet"],
+            124,
+            timeout_text(exc.stdout),
+            timeout_text(exc.stderr) or "Git fetch timed out",
+        )
+
+    finished = time.time()
+    if result.returncode == 0:
+        clear_git_cache(repo)
+        update_fetch_state(
+            repo,
+            inFlight=False,
+            lastSuccessUnix=finished,
+            lastError="",
+            lastDurationSeconds=round(finished - started, 3),
+            nextFetchUnix=finished + fetch_interval_seconds(),
+            skippedReason="",
+        )
+    else:
+        update_fetch_state(
+            repo,
+            inFlight=False,
+            lastError=result.stderr.strip() or result.stdout.strip() or f"git fetch exited {result.returncode}",
+            lastDurationSeconds=round(finished - started, 3),
+            nextFetchUnix=finished + fetch_interval_seconds(),
+            skippedReason="",
+        )
+    return fetch_state(repo)
+
+
+def auto_fetch_loop(repo: str) -> None:
+    while True:
+        fetch_repo_once(repo)
+        time.sleep(fetch_interval_seconds())
+
+
+def ensure_fetch_worker(repo: str) -> None:
+    if not auto_fetch_enabled():
+        return
+    repo = os.path.abspath(repo)
+    with _FETCH_LOCK:
+        worker = _FETCH_WORKERS.get(repo)
+        if worker and worker.is_alive():
+            return
+        _FETCH_STATES.setdefault(repo, {"enabled": True, "intervalSeconds": fetch_interval_seconds()})
+        worker = threading.Thread(target=auto_fetch_loop, args=(repo,), daemon=True)
+        _FETCH_WORKERS[repo] = worker
+        worker.start()
 
 
 def default_state_dir() -> Path:
@@ -1116,12 +1248,20 @@ class PaneHandler(BaseHTTPRequestHandler):
         root = self.resolve_repo(params)
         if not root:
             return
-        self.send_json({"root": root, "name": os.path.basename(root), "status": status_summary(root)})
+        self.send_json(
+            {
+                "root": root,
+                "name": os.path.basename(root),
+                "status": status_summary(root),
+                "freshness": fetch_state(root),
+            }
+        )
 
     def json_graph(self, params: dict[str, list[str]]) -> None:
         root = self.resolve_repo(params)
         if not root:
             return
+        ensure_fetch_worker(root)
         limit = max(25, min(3000, int(first(params, "limit", "500") or "500")))
         self.send_json(graph(root, limit))
 
@@ -1129,6 +1269,7 @@ class PaneHandler(BaseHTTPRequestHandler):
         root = self.resolve_repo(params)
         if not root:
             return
+        ensure_fetch_worker(root)
         self.send_json(branches(root))
 
     def json_commit(self, params: dict[str, list[str]]) -> None:

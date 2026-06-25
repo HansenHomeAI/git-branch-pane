@@ -15,6 +15,10 @@ def git(repo, *args):
     return subprocess.run(["git", "-C", repo, *args], check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
+def run(*args):
+    return subprocess.run(args, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
 class GitBranchPaneTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -194,6 +198,31 @@ class GitBranchPaneTests(unittest.TestCase):
         self.assertTrue(names["main"]["current"])
         self.assertEqual(names["main"]["color"], 0)
 
+    def test_fetch_repo_once_gets_new_remote_branch_and_clears_cache(self):
+        with tempfile.TemporaryDirectory() as remote_tmp:
+            remote = Path(remote_tmp) / "remote.git"
+            clone = Path(remote_tmp) / "clone"
+            run("git", "init", "--bare", str(remote))
+            git(self.repo, "remote", "add", "origin", str(remote))
+            git(self.repo, "push", "-u", "origin", "main")
+            run("git", "clone", str(remote), str(clone))
+            git(clone, "config", "user.email", "codex@example.test")
+            git(clone, "config", "user.name", "Codex Test")
+            git(clone, "switch", "-c", "remote-only")
+            (clone / "remote-only.txt").write_text("remote only\n", encoding="utf-8")
+            git(clone, "add", "remote-only.txt")
+            git(clone, "commit", "-m", "remote only")
+            git(clone, "push", "-u", "origin", "remote-only")
+
+            before = {row["name"] for row in git_branch_pane.branches(str(self.repo))["branches"]}
+            state = git_branch_pane.fetch_repo_once(str(self.repo))
+            after = {row["name"] for row in git_branch_pane.branches(str(self.repo))["branches"]}
+
+        self.assertNotIn("origin/remote-only", before)
+        self.assertIn("origin/remote-only", after)
+        self.assertEqual(state["lastError"], "")
+        self.assertIn("lastSuccessUnix", state)
+
     def test_http_endpoints(self):
         server = git_branch_pane.ThreadingHTTPServer(("127.0.0.1", 0), git_branch_pane.PaneHandler)
         server.default_repo = str(self.repo)
@@ -207,6 +236,12 @@ class GitBranchPaneTests(unittest.TestCase):
                 payload = json.loads(response.read().decode("utf-8"))
             self.assertIn("rows", payload)
             self.assertTrue(any(row.get("subject") == "merge feature" for row in payload["rows"]))
+            url = base + "/api/repo?" + urllib.parse.urlencode({"repo": str(self.repo)})
+            with urllib.request.urlopen(url, timeout=5) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            self.assertIn("freshness", payload)
+            self.assertTrue(payload["freshness"]["enabled"])
+            self.assertEqual(payload["freshness"]["intervalSeconds"], git_branch_pane.GIT_FETCH_INTERVAL_SECONDS)
         finally:
             server.shutdown()
             thread.join(timeout=5)

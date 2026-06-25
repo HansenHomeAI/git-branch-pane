@@ -166,7 +166,7 @@ That directory stores the daemon PID, latest URL, selected repo, and log.
 - Stable branch colors: `main` stays blue, `development` stays purple, and other branches keep their assigned color across refreshes.
 - Persistent branch head labels.
 - Hover commit dots or labels for commit specs.
-- Auto-refresh every 15 seconds.
+- Auto-refresh every 15 seconds, with a server-side `git fetch --all --prune` freshness check every 5 minutes.
 - No npm, no package install, no API key, no external service.
 
 The browser view is intentionally sparse: branch heads stay labeled, ordinary commits stay compact, and full details are available on hover.

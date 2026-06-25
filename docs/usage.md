@@ -21,6 +21,7 @@ gbp
 ```
 
 `gbp` starts or restarts a background local server and prints the URL. It keeps running after the shell command returns, with no built-in timeout.
+While the server is running, it checks remotes every 5 minutes with `git fetch --all --prune` so the pane can pick up moved or deleted remote branches without manual intervention.
 
 Or:
 
